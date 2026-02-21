@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import DashboardBox from '../components/dashboardBox';
+import DashboardBox from '../components/DashboardBox';
 import DashboardChart from '../components/DashboardChart';
 
 const Dashboard = () => {
@@ -16,7 +16,7 @@ const Dashboard = () => {
         const fetchData = async () => {
             try {
 
-                const response = await fetch('http://localhost:3000/api/v1/analytics');
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/analytics`);
                 const data = await response.json();
 
 
