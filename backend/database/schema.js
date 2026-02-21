@@ -9,7 +9,7 @@ const speedSchema = new mongoose.Schema(
     stat: {
       type: String,
       required: true,
-      enum: ["overspeeding", "not overspeeding"],
+      enum: ["overspeeding", "normal"],
     },
     image: {
       type: String, 

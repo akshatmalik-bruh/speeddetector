@@ -1,12 +1,13 @@
 const z = require("zod");
 const router = require("express").Router();
-const {Raftaar} = require("../database/schema") 
+const { Raftaar } = require("../database/schema");
 
 const speedSchema = z.object({
   speed: z.number(),
-  stat: z.enum(["overspeeding", "not overspeeding"]),
+  stat: z.enum(["overspeeding", "normal"]),
   image: z.string().optional(),
 });
+
 
 router.post("/speed", async (req, res) => {
   try {
@@ -39,58 +40,76 @@ router.post("/speed", async (req, res) => {
     });
   }
 });
-router.get("/allinfo",async (req,res)=>{
-    try{
-           const alldata = await Raftaar.find({}).sort({ createdAt: -1 });
-           return res.status(200).json({
-            data : alldata
-           })
-    }
-    catch(err){
-        return res.status(500).json({
-            msg : "Server erro",
-            error : err.message
-        })
-    }
- 
 
 
-})
+router.get("/allinfo", async (req, res) => {
+  try {
+    const alldata = await Raftaar.find({}).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      data: alldata
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      msg: "Server error",
+      error: err.message
+    });
+  }
+});
+
 router.get("/analytics", async (req, res) => {
   try {
-   
+
     const totalVehicles = await Raftaar.countDocuments();
 
-   
     const totalOverspeeding = await Raftaar.countDocuments({
       stat: "overspeeding"
     });
-    const averageResult= await Raftaar.aggregate([
-  {
-    $group: {
-      _id: null,
-      
-      avgSpeed: { $avg: "$speed" },
-      
-    }
-  }
-]);
-   const averageSpeed = averageResult[0]?.avgSpeed || 0;
-    
-    const hourlyData = await Raftaar.aggregate([
+
+    const averageResult = await Raftaar.aggregate([
       {
         $group: {
-          _id: {
-            $dateToString: {
-              format: "%H:00",
-              date: "$createdAt"
-            }
-          },
-          count: { $sum: 1 }
+          _id: null,
+          avgSpeed: { $avg: "$speed" }
+        }
+      }
+    ]);
+
+    const averageSpeed = averageResult[0]?.avgSpeed || 0;
+
+    const startOfDay = new Date();
+startOfDay.setHours(0, 0, 0, 0);
+
+const hourlyData = await Raftaar.aggregate([
+  {
+    $match: {
+      createdAt: { $gte: startOfDay }
+    }
+  },
+  {
+    $group: {
+      _id: {
+        $dateToString: {
+          format: "%H:00",
+          date: "$createdAt",
+          timezone: "Asia/Kolkata"
         }
       },
-      { $sort: { _id: 1 } }
-    ]);
+      totalCount: { $sum: 1 },
+      overspeedCount: {
+        $sum: {
+          $cond: [
+            { $eq: ["$stat", "overspeeding"] },
+            1,
+            0
+          ]
+        }
+      }
+    }
+  },
+  { $sort: { _id: 1 } }
+]);
 
     return res.status(200).json({
       totalVehicles,
@@ -106,6 +125,5 @@ router.get("/analytics", async (req, res) => {
     });
   }
 });
-
 
 module.exports = router;
